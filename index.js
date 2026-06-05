@@ -107,4 +107,4 @@ client.once("ready", () => {
 });
 
 // 🔴 APENAS TROQUE AQUI: Coloque o Token do seu Bot entre as aspas
-client.login("MTUxMjM4ODc5MjYwNTIxNjgyOA.G86t6N.w4L-cryOvv_DS5Xi2leKK9nodTMoZ7jMWY2dgk");
+client.login(process.env.DISCORD_TOKEN);
