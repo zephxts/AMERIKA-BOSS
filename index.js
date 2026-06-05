@@ -17,6 +17,9 @@ const URL = "https://www.l2amerika.com/?page=boss-status";
 let lastBossStatus = {};
 let isFirstRun = true;
 
+// 🛡️ LISTA DE CONTROLE: Impede que o bot floode o chat mandando alerta de 1 hora a cada minuto
+let warnedOneHour = {};
+
 async function checkBosses() {
   try {
     // Puxa o HTML do site
@@ -29,7 +32,8 @@ async function checkBosses() {
       if (index === 0) return;
 
       const cols = $(element).find("td");
-      if (cols.length >= 2) {
+      // Mudado para >= 3 para garantir a leitura da coluna de Respawn
+      if (cols.length >= 3) {
         // Pega o nome do boss e limpa espaços extras
         const bossName = $(cols[0]).text().trim();
         // Pega o status (Alive / Dead)
@@ -42,20 +46,51 @@ async function checkBosses() {
         // Se for a primeira vez rodando, ele só memoriza o estado atual sem floodar o Discord
         if (isFirstRun) {
           lastBossStatus[bossName] = bossStatus;
+          // Se o bicho já nascer vivo no primeiro spawn, garante que o alerta de 1 hora tá limpo
+          if (bossStatus.toLowerCase().includes("alive")) {
+            warnedOneHour[bossName] = false;
+          }
           return;
+        }
+
+        // ⏰ --- NOVA LÓGICA: AVISO DE 1 HORA ANTES ---
+        if (bossStatus.toLowerCase().includes("dead") && respawnTime !== "N/A" && respawnTime !== "-") {
+          try {
+            // Transforma "DD/MM/AAAA HH:MM" do site em um objeto de data do JavaScript
+            const [dataPart, horaPart] = respawnTime.split(" ");
+            const [dia, mes, ano] = dataPart.split("/");
+            const [hora, minuto] = horaPart.split(":");
+            
+            const respawnDate = new Date(ano, mes - 1, dia, hora, minuto);
+            const agora = new Date();
+
+            // Calcula a diferença exata em minutos entre o respawn e o agora
+            const diferencaMinutos = Math.round((respawnDate - agora) / 60000);
+
+            // Se faltar entre 55 e 65 minutos (janela de 1 hora de antecedência) e ainda não avisou neste ciclo
+            if (diferencaMinutos >= 55 && diferencaMinutos <= 65 && !warnedOneHour[bossName]) {
+              sendAlert(
+                bossName, 
+                "RESPAWN EM BREVE", 
+                `⚠️ **AVISO DE 1 HORA:** Este Boss está previsto para nascer logo mais!\n📅 **Data/Hora:** \`${respawnTime}\`\nReúnam o clã e preparem as PTs!`, 
+                0xFFFF00
+              );
+              warnedOneHour[bossName] = true; // Marca como avisado para não repetir no próximo minuto
+            }
+          } catch (e) {
+            console.error(`Erro ao calcular tempo para o boss ${bossName}:`, e);
+          }
+        }
+
+        // Se o Boss estiver vivo, resetamos o alerta de 1 hora para que funcione na próxima vez que ele morrer
+        if (bossStatus.toLowerCase().includes("alive")) {
+          warnedOneHour[bossName] = false;
         }
 
         // 🔥 DETECÇÃO CHAVE: Se o boss estava 'Dead' (ou não listado) e agora mudou para 'Alive'
         if (bossStatus.toLowerCase().includes("alive") && lastBossStatus[bossName] !== bossStatus) {
-          
           sendAlert(bossName, "ALIVE", "🟩 VIVO! Corram para o Boss!", 0x00FF00);
         } 
-        // Se quiser avisar quando ele MORRE também, basta remover as barras '/*' e '*/' abaixo:
-        /*
-        else if (bossStatus.toLowerCase().includes("dead") && lastBossStatus[bossName] !== bossStatus) {
-          sendAlert(bossName, "DEAD", `🟥 MORREU! Respawn estimado: ${respawnTime}`, 0xFF0000);
-        }
-        */
 
         // Atualiza o histórico com o status atual
         lastBossStatus[bossName] = bossStatus;
@@ -106,5 +141,5 @@ client.once("ready", () => {
   setInterval(checkBosses, 60000);
 });
 
-// 🔴 APENAS TROQUE AQUI: Coloque o Token do seu Bot entre as aspas
+// 🔴 Mantido via variável de ambiente protegida conforme arrumamos!
 client.login(process.env.DISCORD_TOKEN);
