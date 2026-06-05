@@ -2,9 +2,10 @@ const { Client, GatewayIntentBits, EmbedBuilder } = require("discord.js");
 const axios = require("axios");
 const cheerio = require("cheerio");
 
-// 🌐 CÓDIGO DA PORTA FAKE: Evita que a Render derrube o Web Service por falta de tráfego
+// 🌐 CÓDIGO DA PORTA FAKE REFORMULADO (Manda Status 200 de Sucesso)
 const http = require("http");
 http.createServer((req, res) => {
+  res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
   res.write("Bot L2 Amerika Online!");
   res.end();
 }).listen(process.env.PORT || 3000);
@@ -118,7 +119,7 @@ async function checkBosses() {
 }
 
 function sendAlert(bossName, status, description, color) {
-  // 🆔 ID do seu canal #boss-amerika já configurado aqui!
+  // 🆔 ID do seu canal #boss-amerika
   const channel = client.channels.cache.get("1512375638781202432");
 
   if (!channel) {
