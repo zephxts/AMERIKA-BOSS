@@ -2,6 +2,13 @@ const { Client, GatewayIntentBits, EmbedBuilder } = require("discord.js");
 const axios = require("axios");
 const cheerio = require("cheerio");
 
+// 🌐 CÓDIGO DA PORTA FAKE: Evita que a Render derrube o Web Service por falta de tráfego
+const http = require("http");
+http.createServer((req, res) => {
+  res.write("Bot L2 Amerika Online!");
+  res.end();
+}).listen(process.env.PORT || 3000);
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
