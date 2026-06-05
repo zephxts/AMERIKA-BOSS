@@ -17,7 +17,7 @@ const client = new Client({
   ]
 });
 
-// URL do L2 Amerika que você passou
+// URL do L2 Amerika
 const URL = "https://www.l2amerika.com/?page=boss-status";
 
 // Guarda o último estado dos bosses para saber se mudou de Dead para Alive
@@ -39,7 +39,6 @@ async function checkBosses() {
       if (index === 0) return;
 
       const cols = $(element).find("td");
-      // Mudado para >= 3 para garantir a leitura da coluna de Respawn
       if (cols.length >= 3) {
         // Pega o nome do boss e limpa espaços extras
         const bossName = $(cols[0]).text().trim();
@@ -53,14 +52,13 @@ async function checkBosses() {
         // Se for a primeira vez rodando, ele só memoriza o estado atual sem floodar o Discord
         if (isFirstRun) {
           lastBossStatus[bossName] = bossStatus;
-          // Se o bicho já nascer vivo no primeiro spawn, garante que o alerta de 1 hora tá limpo
           if (bossStatus.toLowerCase().includes("alive")) {
             warnedOneHour[bossName] = false;
           }
           return;
         }
 
-        // ⏰ --- NOVA LÓGICA: AVISO DE 1 HORA ANTES ---
+        // ⏰ --- LÓGICA: AVISO DE 1 HORA ANTES ---
         if (bossStatus.toLowerCase().includes("dead") && respawnTime !== "N/A" && respawnTime !== "-") {
           try {
             // Transforma "DD/MM/AAAA HH:MM" do site em um objeto de data do JavaScript
@@ -76,10 +74,15 @@ async function checkBosses() {
 
             // Se faltar entre 55 e 65 minutos (janela de 1 hora de antecedência) e ainda não avisou neste ciclo
             if (diferencaMinutos >= 55 && diferencaMinutos <= 65 && !warnedOneHour[bossName]) {
+              
+              // Verifica se é o Mardil para personalizar a mensagem
+              const isMiniBoss = bossName.toLowerCase().includes("mardil");
+              const tipoTexto = isMiniBoss ? "MINI BOSS" : "RAID BOSS";
+
               sendAlert(
                 bossName, 
                 "RESPAWN EM BREVE", 
-                `⚠️ **AVISO DE 1 HORA:** Este Boss está previsto para nascer logo mais!\n📅 **Data/Hora:** \`${respawnTime}\`\nReúnam o clã e preparem as PTs!`, 
+                `⚠️ **AVISO DE 1 HORA:** Este ${tipoTexto} está previsto para nascer logo mais!\n📅 **Data/Hora:** \`${respawnTime}\`\nPreparem as PTs!`, 
                 0xFFFF00
               );
               warnedOneHour[bossName] = true; // Marca como avisado para não repetir no próximo minuto
@@ -123,9 +126,13 @@ function sendAlert(bossName, status, description, color) {
     return;
   }
 
+  // Verifica se é o Mardil para mudar o título do Embed
+  const isMiniBoss = bossName.toLowerCase().includes("mardil");
+  const tituloTipo = isMiniBoss ? "MINI BOSS" : "RAID BOSS";
+
   // Cria o layout bonitão (Embed)
   const embed = new EmbedBuilder()
-    .setTitle(`📢 ALERTA DE RAID BOSS — ${bossName.toUpperCase()}`)
+    .setTitle(`📢 ALERTA DE ${tituloTipo} — ${bossName.toUpperCase()}`)
     .setDescription(description)
     .setColor(color)
     .addFields(
@@ -148,5 +155,5 @@ client.once("ready", () => {
   setInterval(checkBosses, 60000);
 });
 
-// 🔴 Mantido via variável de ambiente protegida conforme arrumamos!
+// 🔴 Mantido via variável de ambiente protegida
 client.login(process.env.DISCORD_TOKEN);
