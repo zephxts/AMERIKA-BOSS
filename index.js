@@ -2,11 +2,17 @@ const { Client, GatewayIntentBits, EmbedBuilder } = require("discord.js");
 const axios = require("axios");
 const cheerio = require("cheerio");
 
-// 🌐 CÓDIGO DA PORTA FAKE REFORMULADO (Manda Status 200 de Sucesso)
+// 🌐 CÓDIGO DA PORTA FAKE ADAPTADO PARA REQUISIÇÕES HEAD E GET (Deixa o UptimeRobot Verde)
 const http = require("http");
 http.createServer((req, res) => {
+  // Responde com Status 200 (Sucesso) independente de ser GET ou HEAD
   res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
-  res.write("Bot L2 Amerika Online!");
+  
+  // Só escreve o texto se não for uma requisição HEAD (HEAD não pode ter corpo de texto)
+  if (req.method !== "HEAD") {
+    res.write("Bot L2 Amerika Online!");
+  }
+  
   res.end();
 }).listen(process.env.PORT || 3000);
 
