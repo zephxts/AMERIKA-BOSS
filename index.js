@@ -25,6 +25,14 @@ const URL = "https://www.l2amerika.com/?page=boss-status";
 // Armazena os IDs dos cronômetros ativos para não duplicar alarmes
 let activeTimers = {}; 
 
+// 🇧🇷 FUNÇÃO PARA PEGAR A HORA ATUAL NO FUSO DO BRASIL (GMT-3)
+function getAgoraBrasil() {
+  const agoraUTC = new Date();
+  // Converte o tempo atual do servidor para o fuso de São Paulo
+  const dataBrString = agoraUTC.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" });
+  return new Date(dataBrString);
+}
+
 async function checkBosses() {
   try {
     const { data } = await axios.get(URL);
@@ -49,9 +57,11 @@ async function checkBosses() {
               const [dia, mes, ano] = dataPart.split("/");
               const [hora, minuto] = horaPart.split(":");
               
-              // Gera a data alvo baseada no fuso da máquina (Render está em SP)
+              // Data do respawn vinda do site
               const respawnDate = new Date(ano, mes - 1, dia, hora, minuto);
-              const agora = new Date();
+              
+              // 🎯 AJUSTE CHAVE: Pega o "agora" convertido no fuso do Brasil
+              const agora = getAgoraBrasil();
 
               // Chave única baseada no nome + data para saber se já agendamos ESSE respawn específico
               const timerKey = `${bossName}_${respawnTime}`;
@@ -135,10 +145,9 @@ function sendAlert(bossName, status, description, color) {
 }
 
 client.once("ready", () => {
-  console.log(`🤖 Bot ativo com Agendador Inteligente: ${client.user.tag}`);
-  // Roda a primeira vez para agendar tudo e repete a cada 5 minutos para checar novos boss mortos
+  console.log(`🤖 Bot ativo com Correção de Fuso Horário BR: ${client.user.tag}`);
   checkBosses();
-  setInterval(checkBosses, 300000); 
+  setInterval(checkBosses, 300000); // Checa o site real a cada 5 minutos
 });
 
 client.login(process.env.DISCORD_TOKEN);
