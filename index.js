@@ -244,6 +244,15 @@ async function checkBosses() {
 
       if (!bossName) return;
 
+      // ── FILTRO: apenas Epic Bosses e Mardil ────
+      const nameLower = bossName.toLowerCase();
+      const isEpic = nameLower.includes("core") || nameLower.includes("baium") ||
+        nameLower.includes("queen ant") || nameLower.includes("orfen") ||
+        nameLower.includes("antharas") || nameLower.includes("valakas") ||
+        nameLower.includes("beleth") || nameLower.includes("andreas");
+      const isMardil = nameLower.includes("mardil");
+      if (!isEpic && !isMardil) return;
+
       // ── CAMINHO 1: Boss ficou ALIVE agora ──────
       if (bossStatus.includes("ALIVE")) {
         if (!isFirstRun && lastBossStatus[bossName] !== bossStatus) {
