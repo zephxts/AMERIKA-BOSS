@@ -21,7 +21,10 @@ const client = new Client({
 });
 
 const URL = "https://www.l2amerika.com/?page=boss-status";
-let activeTimers = {}; 
+
+let lastBossStatus = {};
+let activeTimers = {};
+let isFirstRun = true;
 
 async function checkBosses() {
   try {
@@ -35,71 +38,88 @@ async function checkBosses() {
         const cols = $(element).find("td");
         if (cols.length >= 3) {
           const bossName = $(cols[0]).text().trim();
-          const bossStatus = $(cols[1]).text().trim();
+          const bossStatus = $(cols[1]).text().trim().toUpperCase();
           const respawnTime = cols[2] ? $(cols[2]).text().trim() : "N/A";
 
           if (!bossName) return;
 
-          if (bossStatus.toLowerCase().includes("dead") && respawnTime !== "N/A" && respawnTime !== "-") {
+          // 1️⃣ LÓGICA EM TEMPO REAL: Se mudou para ALIVE agora, avisa direto!
+          if (bossStatus.includes("ALIVE")) {
+            if (!isFirstRun && lastBossStatus[bossName] !== bossStatus) {
+              sendAlert(bossName, "ALIVE", "🟩 **VIVO NO GAME!** O boss deu as caras, corram para o spot! ⚔️", 0x00FF00);
+            }
+          }
+
+          // 2️⃣ LÓGICA DO AGENDADOR: Se está morto, programa os alarmes futuros
+          if (bossStatus.includes("DEAD") && respawnTime !== "N/A" && respawnTime !== "-" && respawnTime !== "") {
             try {
-              // Separa "06/06/2026" e "15:30"
               const [dataPart, horaPart] = respawnTime.split(" ");
-              const [dia, mes, ano] = dataPart.split("/");
-              const [hora, minuto] = horaPart.split(":");
-              
-              // 🎯 CRIA A DATA DIRETAMENTE FORÇANDO O FUSO DE SÃO PAULO (-03:00)
-              const respawnDate = new Date(`${ano}-${mes}-${dia}T${hora}:${minuto}:00-03:00`);
-              
-              // Pega o momento exato agora (independente de onde o servidor está)
-              const agora = new Date();
+              if (dataPart && horaPart) {
+                const [dia, mes, ano] = dataPart.split("/");
+                const [hora, minuto] = horaPart.split(":");
+                
+                if (dia && mes && ano && hora && minuto) {
+                  // Força a montagem no padrão correto ISO com fuso horário de Brasília
+                  const respawnDate = new Date(`${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}T${hora.padStart(2, '0')}:${minuto.padStart(2, '0')}:00-03:00`);
+                  const agora = new Date();
+                  const timerKey = `${bossName}_${respawnTime}`;
 
-              const timerKey = `${bossName}_${respawnTime}`;
+                  if (!activeTimers[timerKey]) {
+                    // Limpa agendamentos velhos desse boss se o horário mudou
+                    if (activeTimers[bossName]) {
+                      clearTimeout(activeTimers[bossName].oneHour);
+                      clearTimeout(activeTimers[bossName].spawn);
+                    }
 
-              if (!activeTimers[timerKey]) {
-                if (activeTimers[bossName]) {
-                  clearTimeout(activeTimers[bossName].oneHour);
-                  clearTimeout(activeTimers[bossName].spawn);
-                }
+                    activeTimers[bossName] = { oneHour: null, spawn: null };
+                    activeTimers[timerKey] = true;
 
-                activeTimers[bossName] = { oneHour: null, spawn: null };
-                activeTimers[timerKey] = true;
+                    const tempoRestanteMs = respawnDate.getTime() - agora.getTime();
 
-                const tempoRestanteMs = respawnDate.getTime() - agora.getTime();
+                    // Alarme de 1 Hora Antes
+                    const umHoraMs = tempoRestanteMs - (60 * 60 * 1000);
+                    if (umHoraMs > 0) {
+                      activeTimers[bossName].oneHour = setTimeout(() => {
+                        sendAlert(
+                          bossName, 
+                          "RESPAWN EM BREVE", 
+                          `⚠️ **AVISO DE 1 HORA:** O chefe está previsto para nascer logo mais!\n📅 **Data/Hora:** \`${respawnTime}\`\nPreparem as PTs!`, 
+                          0xFFFF00
+                        );
+                      }, umHoraMs);
+                      console.log(`[⏱️] Alarme de 1h agendado para: ${bossName} (${respawnTime})`);
+                    }
 
-                // 1️⃣ PROGRAMA O AVISO DE 1 HORA ANTES
-                const umHoraMs = tempoRestanteMs - (60 * 60 * 1000);
-                if (umHoraMs > 0) {
-                  activeTimers[bossName].oneHour = setTimeout(() => {
-                    sendAlert(
-                      bossName, 
-                      "RESPAWN EM BREVE", 
-                      `⚠️ **AVISO DE 1 HORA:** O chefe está previsto para nascer logo mais!\n📅 **Data/Hora:** \`${respawnTime}\`\nPreparem as PTs!`, 
-                      0xFFFF00
-                    );
-                  }, umHoraMs);
-                  console.log(`[⏱️] Alarme de 1h agendado para o boss: ${bossName}`);
-                }
-
-                // 2️⃣ PROGRAMA O AVISO DE NASCIMENTO (CRAVADO)
-                if (tempoRestanteMs > 0) {
-                  activeTimers[bossName].spawn = setTimeout(() => {
-                    sendAlert(
-                      bossName, 
-                      "ALIVE", 
-                      `🟩 **VIVO!** O boss acaba de atingir o horário de nascimento previsto!\n⚔️ Corram para o spot!`, 
-                      0x00FF00
-                    );
-                  }, tempoRestanteMs);
-                  console.log(`[⚔️] Alarme de nascimento agendado para o boss: ${bossName}`);
+                    // Alarme do Nascimento Exato
+                    if (tempoRestanteMs > 0) {
+                      activeTimers[bossName].spawn = setTimeout(() => {
+                        sendAlert(
+                          bossName, 
+                          "ALIVE", 
+                          `🟩 **HORÁRIO ALVO ATINGIDO!** O boss chegou na hora prevista de nascimento!\n📅 **Data Alvo:** \`${respawnTime}\`\nVerifiquem o spot!`, 
+                          0x00FF00
+                        );
+                      }, tempoRestanteMs);
+                      console.log(`[⚔️] Alarme de spawn agendado para: ${bossName} (${respawnTime})`);
+                    }
+                  }
                 }
               }
             } catch (e) {
-              console.error(`Erro ao processar data do boss ${bossName}:`, e);
+              console.error(`Erro ao agendar data para ${bossName}:`, e.message);
             }
           }
+
+          // Salva o estado atual para comparar na próxima rodada de 60 segundos
+          lastBossStatus[bossName] = bossStatus;
         }
       });
     });
+
+    if (isFirstRun) {
+      console.log("✅ Primeira varredura completa. Sistema de monitoramento híbrido online!");
+      isFirstRun = false;
+    }
 
   } catch (err) {
     console.error("Erro ao ler o site do L2 Amerika:", err.message);
@@ -135,7 +155,7 @@ function sendAlert(bossName, status, description, color) {
 client.once("ready", () => {
   console.log(`🤖 Bot ativo com Sincronização ISO-BR: ${client.user.tag}`);
   checkBosses();
-  setInterval(checkBosses, 300000); 
+  setInterval(checkBosses, 60000); // Varre o site a cada 60 segundos para garantir a mudança instantânea
 });
 
 client.login(process.env.DISCORD_TOKEN);
