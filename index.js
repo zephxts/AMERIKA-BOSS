@@ -21,17 +21,7 @@ const client = new Client({
 });
 
 const URL = "https://www.l2amerika.com/?page=boss-status";
-
-// Armazena os IDs dos cronômetros ativos para não duplicar alarmes
 let activeTimers = {}; 
-
-// 🇧🇷 FUNÇÃO PARA PEGAR A HORA ATUAL NO FUSO DO BRASIL (GMT-3)
-function getAgoraBrasil() {
-  const agoraUTC = new Date();
-  // Converte o tempo atual do servidor para o fuso de São Paulo
-  const dataBrString = agoraUTC.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" });
-  return new Date(dataBrString);
-}
 
 async function checkBosses() {
   try {
@@ -50,33 +40,31 @@ async function checkBosses() {
 
           if (!bossName) return;
 
-          // Se o boss está morto e tem data válida de respawn
           if (bossStatus.toLowerCase().includes("dead") && respawnTime !== "N/A" && respawnTime !== "-") {
             try {
+              // Separa "06/06/2026" e "15:30"
               const [dataPart, horaPart] = respawnTime.split(" ");
               const [dia, mes, ano] = dataPart.split("/");
               const [hora, minuto] = horaPart.split(":");
               
-              // Data do respawn vinda do site
-              const respawnDate = new Date(ano, mes - 1, dia, hora, minuto);
+              // 🎯 CRIA A DATA DIRETAMENTE FORÇANDO O FUSO DE SÃO PAULO (-03:00)
+              const respawnDate = new Date(`${ano}-${mes}-${dia}T${hora}:${minuto}:00-03:00`);
               
-              // 🎯 AJUSTE CHAVE: Pega o "agora" convertido no fuso do Brasil
-              const agora = getAgoraBrasil();
+              // Pega o momento exato agora (independente de onde o servidor está)
+              const agora = new Date();
 
-              // Chave única baseada no nome + data para saber se já agendamos ESSE respawn específico
               const timerKey = `${bossName}_${respawnTime}`;
 
               if (!activeTimers[timerKey]) {
-                // Cancela alarmes antigos pendentes desse mesmo boss se houver (caso a data tenha mudado)
                 if (activeTimers[bossName]) {
                   clearTimeout(activeTimers[bossName].oneHour);
                   clearTimeout(activeTimers[bossName].spawn);
                 }
 
                 activeTimers[bossName] = { oneHour: null, spawn: null };
-                activeTimers[timerKey] = true; // Marca que este horário já foi programado
+                activeTimers[timerKey] = true;
 
-                const tempoRestanteMs = respawnDate - agora;
+                const tempoRestanteMs = respawnDate.getTime() - agora.getTime();
 
                 // 1️⃣ PROGRAMA O AVISO DE 1 HORA ANTES
                 const umHoraMs = tempoRestanteMs - (60 * 60 * 1000);
@@ -145,9 +133,9 @@ function sendAlert(bossName, status, description, color) {
 }
 
 client.once("ready", () => {
-  console.log(`🤖 Bot ativo com Correção de Fuso Horário BR: ${client.user.tag}`);
+  console.log(`🤖 Bot ativo com Sincronização ISO-BR: ${client.user.tag}`);
   checkBosses();
-  setInterval(checkBosses, 300000); // Checa o site real a cada 5 minutos
+  setInterval(checkBosses, 300000); 
 });
 
 client.login(process.env.DISCORD_TOKEN);
