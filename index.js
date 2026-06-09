@@ -245,11 +245,12 @@ async function checkBosses() {
       if (!bossName) return;
 
       // ── FILTRO: apenas Epic Bosses e Mardil ────
+      // Nomes exatos para não pegar servos como "Beleth's Seer Sephia" ou "Orfen's Handmaiden"
+      const EPIC_NAMES = [
+        "core", "baium", "queen ant", "orfen", "antharas", "valakas", "beleth", "andreas van halter"
+      ];
       const nameLower = bossName.toLowerCase();
-      const isEpic = nameLower.includes("core") || nameLower.includes("baium") ||
-        nameLower.includes("queen ant") || nameLower.includes("orfen") ||
-        nameLower.includes("antharas") || nameLower.includes("valakas") ||
-        nameLower.includes("beleth") || nameLower.includes("andreas");
+      const isEpic = EPIC_NAMES.some((epic) => nameLower === epic);
       const isMardil = nameLower.includes("mardil");
       if (!isEpic && !isMardil) return;
 
