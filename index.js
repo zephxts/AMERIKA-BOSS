@@ -128,12 +128,15 @@ function sendAlert(bossName, status, description, color) {
 
   CHANNEL_IDS.forEach((id) => {
     const channel = client.channels.cache.get(id);
+    console.log(`[📡] Tentando enviar para canal ${id} — encontrado: ${!!channel}`);
     if (!channel) {
       console.error(`[❌] Canal ${id} não encontrado no cache.`);
       return;
     }
+    console.log(`[✅] Enviando alerta de ${bossName} para canal ${id}...`);
     channel
       .send({ content: "⚠️ @everyone", embeds: [embed] })
+      .then(() => console.log(`[📨] Alerta enviado com sucesso para canal ${id}`))
       .catch((err) => console.error(`[❌] Erro ao enviar alerta para ${bossName} no canal ${id}:`, err.message));
   });
 }
@@ -293,7 +296,7 @@ async function checkBosses() {
 // ─────────────────────────────────────────────
 client.once("ready", () => {
   console.log(`🤖 Bot ativo: ${client.user.tag}`);
-  console.log(`📡 Canal de alertas: ${CHANNEL_ID}`);
+  console.log(`📡 Canais de alertas: ${CHANNEL_IDS.join(", ")}`);
   checkBosses();
   setInterval(checkBosses, CHECK_INTERVAL_MS);
 });
