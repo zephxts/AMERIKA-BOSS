@@ -109,7 +109,7 @@ function sendAlert(bossName, status, description, color) {
     nameLower.includes("antharas") ||
     nameLower.includes("valakas") ||
     nameLower.includes("beleth");
-  const isMini = nameLower.includes("mardil");
+  const isMini = nameLower.includes("mardil") || nameLower === "darion";
 
   let tituloTipo = "RAID BOSS";
   if (isEpic) tituloTipo = "EPIC BOSS";
@@ -259,7 +259,8 @@ async function checkBosses() {
       const nameLower = bossName.toLowerCase();
       const isEpic = EPIC_NAMES.some((epic) => nameLower === epic);
       const isMardil = nameLower.includes("mardil");
-      if (!isEpic && !isMardil) return;
+      const isDarion = nameLower === "darion";
+      if (!isEpic && !isMardil && !isDarion) return;
 
       // ── CAMINHO 1: Boss ficou ALIVE agora ──────
       if (bossStatus.includes("ALIVE")) {
