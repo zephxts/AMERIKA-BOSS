@@ -16,7 +16,10 @@ http.createServer((req, res) => {
 // ⚙️ CONFIGURAÇÕES (use variáveis de ambiente)
 // ─────────────────────────────────────────────
 const DISCORD_TOKEN      = process.env.DISCORD_TOKEN;
-const CHANNEL_ID         = process.env.DISCORD_CHANNEL_ID || "1512375638781202432";
+const CHANNEL_IDS        = [
+  process.env.DISCORD_CHANNEL_ID || "1342435746195181618", // servidor 1
+  "1516779491391963216",                                    // servidor 2
+];
 const BOSS_URL           = "https://www.l2amerika.com/?page=boss-status";
 const CHECK_INTERVAL_MS  = 60 * 1000;          // varredura a cada 60s
 const ALERT_COOLDOWN_MS  = 5 * 60 * 1000;      // cooldown de 5 min entre alertas do mesmo boss
@@ -97,12 +100,6 @@ function sendAlert(bossName, status, description, color) {
     return;
   }
 
-  const channel = client.channels.cache.get(CHANNEL_ID);
-  if (!channel) {
-    console.error(`[❌] Canal ${CHANNEL_ID} não encontrado no cache.`);
-    return;
-  }
-
   const nameLower = bossName.toLowerCase();
   const isEpic =
     nameLower.includes("core") ||
@@ -129,9 +126,16 @@ function sendAlert(bossName, status, description, color) {
     .setTimestamp()
     .setFooter({ text: "L2 Amerika Monitor" });
 
-  channel
-    .send({ content: "⚠️ @everyone", embeds: [embed] })
-    .catch((err) => console.error(`[❌] Erro ao enviar alerta para ${bossName}:`, err.message));
+  CHANNEL_IDS.forEach((id) => {
+    const channel = client.channels.cache.get(id);
+    if (!channel) {
+      console.error(`[❌] Canal ${id} não encontrado no cache.`);
+      return;
+    }
+    channel
+      .send({ content: "⚠️ @everyone", embeds: [embed] })
+      .catch((err) => console.error(`[❌] Erro ao enviar alerta para ${bossName} no canal ${id}:`, err.message));
+  });
 }
 
 // ─────────────────────────────────────────────
