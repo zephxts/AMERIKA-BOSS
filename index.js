@@ -84,7 +84,7 @@ async function fetchWithRetry(url, retries = MAX_RETRIES) {
       return data;
     } catch (err) {
       const isLast = attempt === retries;
-      console.warn(`[⚠️] Tentativa ${attempt}/${retries} falhou: ${err.message}`);
+      console.warn(`[⚠️] Attempt ${attempt}/${retries} failed: ${err.message}`);
       if (isLast) throw err;
       await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
     }
@@ -96,7 +96,7 @@ async function fetchWithRetry(url, retries = MAX_RETRIES) {
 // ─────────────────────────────────────────────
 function sendAlert(bossName, status, description, color) {
   if (!canAlert(bossName)) {
-    console.log(`[🔇] Alerta ignorado (cooldown ativo): ${bossName}`);
+    console.log(`[🔇] Alert ignored (cooldown active): ${bossName}`);
     return;
   }
 
@@ -116,12 +116,12 @@ function sendAlert(bossName, status, description, color) {
   else if (isMini) tituloTipo = "MINI BOSS";
 
   const embed = new EmbedBuilder()
-    .setTitle(`📢 ALERTA DE ${tituloTipo} — ${bossName.toUpperCase()}`)
+    .setTitle(`📢 ${tituloTipo} ALERT — ${bossName.toUpperCase()}`)
     .setDescription(description)
     .setColor(color)
     .addFields(
-      { name: "👑 Boss",          value: bossName, inline: true },
-      { name: "📊 Status Atual",  value: status,   inline: true }
+      { name: "👑 Boss",           value: bossName, inline: true },
+      { name: "📊 Current Status", value: status,   inline: true }
     )
     .setTimestamp()
     .setFooter({ text: "L2 Amerika Monitor" });
@@ -167,7 +167,7 @@ function scheduleBossTimers(bossName, respawnTime) {
 
     // Data inválida (ex: site retornou lixo)
     if (isNaN(respawnDate.getTime())) {
-      console.warn(`[⚠️] Data inválida para ${bossName}: "${respawnTime}"`);
+      console.warn(`[⚠️] Invalid date for ${bossName}: "${respawnTime}"`);
       return;
     }
 
@@ -176,7 +176,7 @@ function scheduleBossTimers(bossName, respawnTime) {
 
     // Horário já passou — sem timer, mas log para diagnóstico
     if (tempoRestanteMs <= 0) {
-      console.log(`[⏩] Respawn de ${bossName} (${respawnTime}) já passou — nenhum timer agendado.`);
+      console.log(`[⏩] Respawn for ${bossName} (${respawnTime}) already passed — no timer scheduled.`);
       return;
     }
 
@@ -193,12 +193,12 @@ function scheduleBossTimers(bossName, respawnTime) {
       activeTimers[bossName].oneHour = setTimeout(() => {
         sendAlert(
           bossName,
-          "RESPAWN EM BREVE",
-          `⚠️ **AVISO DE 1 HORA:** O chefe está previsto para nascer logo mais!\n📅 **Data/Hora:** \`${respawnTime}\`\nPreparem as PTs!`,
+          "RESPAWN SOON",
+          `⚠️ **1 HOUR WARNING:** The boss is expected to spawn soon!\n📅 **Date/Time:** \`${respawnTime}\`\nGet your parties ready!`,
           0xffff00
         );
       }, umHoraMs);
-      console.log(`[⏱️] Alarme de 1h agendado para: ${bossName} (${respawnTime})`);
+      console.log(`[⏱️] 1h alarm scheduled for: ${bossName} (${respawnTime})`);
     }
 
     // ── Alarme do Nascimento Exato ───────────────
@@ -210,14 +210,14 @@ function scheduleBossTimers(bossName, respawnTime) {
       sendAlert(
         bossName,
         "ALIVE",
-        `🟩 **HORÁRIO ALVO ATINGIDO!** O boss chegou na hora prevista de nascimento!\n📅 **Data Alvo:** \`${respawnTime}\`\nVerifiquem o spot!`,
+        `🟩 **TARGET TIME REACHED!** The boss has arrived at the expected spawn time!\n📅 **Target Date:** \`${respawnTime}\`\nCheck the spot!`,
         0x00ff00
       );
     }, tempoRestanteMs);
-    console.log(`[⚔️] Alarme de spawn agendado para: ${bossName} (${respawnTime})`);
+    console.log(`[⚔️] Spawn alarm scheduled for: ${bossName} (${respawnTime})`);
 
   } catch (e) {
-    console.error(`[❌] Erro ao agendar timer para ${bossName}:`, e.message);
+    console.error(`[❌] Error scheduling timer for ${bossName}:`, e.message);
   }
 }
 
@@ -229,7 +229,7 @@ async function checkBosses() {
   try {
     html = await fetchWithRetry(BOSS_URL);
   } catch (err) {
-    console.error(`[❌] Falha ao acessar o site após ${MAX_RETRIES} tentativas:`, err.message);
+    console.error(`[❌] Failed to access the site after ${MAX_RETRIES} attempts:`, err.message);
     return;
   }
 
@@ -270,7 +270,7 @@ async function checkBosses() {
           sendAlert(
             bossName,
             "ALIVE",
-            "🟩 **VIVO NO GAME!** O boss deu as caras, corram para o spot! ⚔️",
+            "🟩 **ALIVE IN GAME!** The boss has spawned, rush to the spot! ⚔️",
             0x00ff00
           );
         }
@@ -287,7 +287,7 @@ async function checkBosses() {
   }); // fim $("table").each
 
   if (isFirstRun) {
-    console.log("✅ Primeira varredura completa. Sistema híbrido online!");
+    console.log("✅ First scan complete. Hybrid monitoring system online!");
     isFirstRun = false;
   }
 }
@@ -296,8 +296,8 @@ async function checkBosses() {
 // 🤖 INICIALIZAÇÃO DO BOT
 // ─────────────────────────────────────────────
 client.once("ready", () => {
-  console.log(`🤖 Bot ativo: ${client.user.tag}`);
-  console.log(`📡 Canais de alertas: ${CHANNEL_IDS.join(", ")}`);
+  console.log(`🤖 Bot online: ${client.user.tag}`);
+  console.log(`📡 Alert channels: ${CHANNEL_IDS.join(", ")}`);
   checkBosses();
   setInterval(checkBosses, CHECK_INTERVAL_MS);
 });
