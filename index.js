@@ -23,7 +23,7 @@ const CHANNEL_IDS        = [
 ];
 const BOSS_URL           = "https://www.l2amerika.com/?page=boss-status";
 const CHECK_INTERVAL_MS  = 60 * 1000;          // varredura a cada 60s
-const ALERT_COOLDOWN_MS  = 5 * 60 * 1000;      // cooldown de 5 min entre alertas do mesmo boss
+const ALERT_COOLDOWN_MS  = 15 * 60 * 1000;     // cooldown de 15 min entre alertas do mesmo boss
 const HTTP_TIMEOUT_MS    = 15 * 1000;           // timeout de 15s por requisição
 const MAX_RETRIES        = 3;                   // tentativas antes de desistir
 const RETRY_DELAY_MS     = 5 * 1000;            // espera 5s entre tentativas
