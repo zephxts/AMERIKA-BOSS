@@ -20,6 +20,7 @@ const CHANNEL_IDS        = [
   process.env.DISCORD_CHANNEL_ID || "1342435746195181618", // servidor 1
   "1516779491391963216",                                    // servidor 2
   "1512375638781202432",                                    // servidor 3
+  "1530016618975858748",                                    // servidor 4
 ];
 const BOSS_URL           = "https://www.l2amerika.com/?page=boss-status";
 const CHECK_INTERVAL_MS  = 60 * 1000;          // varredura a cada 60s
