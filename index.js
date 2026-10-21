@@ -82,7 +82,13 @@ function clearBossTimers(bossName) {
 async function fetchWithRetry(url, retries = MAX_RETRIES) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      const { data } = await axios.get(url, { timeout: HTTP_TIMEOUT_MS });
+      const { data } = await axios.get(url, {
+        timeout: HTTP_TIMEOUT_MS,
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+      });
       return data;
     } catch (err) {
       const isLast = attempt === retries;
@@ -110,7 +116,9 @@ function sendAlert(bossName, status, description, color) {
     nameLower.includes("orfen") ||
     nameLower.includes("antharas") ||
     nameLower.includes("valakas") ||
-    nameLower.includes("beleth");
+    nameLower.includes("beleth") ||
+    nameLower.includes("fafurion") ||
+    nameLower.includes("andreas");
   const isMini = nameLower.includes("mardil") || nameLower === "darion";
 
   let tituloTipo = "RAID BOSS";
@@ -155,12 +163,14 @@ function scheduleBossTimers(bossName, respawnTime) {
   if (activeTimers[timerKey]) return;
 
   try {
-    const [dataPart, horaPart] = respawnTime.split(" ");
-    if (!dataPart || !horaPart) return;
-
-    const [dia, mes, ano]   = dataPart.split("/");
-    const [hora, minuto]    = horaPart.split(":");
-    if (!dia || !mes || !ano || !hora || !minuto) return;
+    // O site agora entrega data e hora coladas, sem espaço (ex: "28/10/202600:50").
+    // O regex aceita com ou sem espaço entre elas.
+    const match = respawnTime.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s*(\d{1,2}):(\d{2})/);
+    if (!match) {
+      console.warn(`[⚠️] Could not parse respawn date for ${bossName}: "${respawnTime}"`);
+      return;
+    }
+    const [, dia, mes, ano, hora, minuto] = match;
 
     // Data montada com fuso de Brasília (-03:00) — já converte para UTC internamente
     const respawnDate = new Date(
@@ -236,6 +246,7 @@ async function checkBosses() {
   }
 
   const $ = cheerio.load(html);
+  let monitoredCount = 0; // quantos bosses monitorados foram lidos nesta varredura
 
   // O site tem duas tabelas separadas: Epic Bosses e Raid Bosses.
   // Ambas têm 4 colunas: Name (0) | Level (1) | Status (2) | Respawn (3).
@@ -247,22 +258,27 @@ async function checkBosses() {
       const cols = $(element).find("td");
       if (cols.length < 3) return; // linha inválida / não é linha de boss
 
-      const bossName    = $(cols[0]).text().trim();
+      // O site agora coloca imagem + nome + "Level 85" dentro da mesma célula,
+      // então o texto bruto vem como "BelethLevel 85". Removemos o sufixo do level.
+      const bossName    = $(cols[0]).text().replace(/\s*Level\s*\d+.*$/i, "").trim();
       const bossStatus  = $(cols[2]).text().trim().toUpperCase(); // coluna 2 = Status
       const respawnTime = cols[3] ? $(cols[3]).text().trim() : ""; // coluna 3 = Respawn
 
       if (!bossName) return;
 
-      // ── FILTRO: apenas Epic Bosses e Mardil ────
+      // ── FILTRO: apenas Epic Bosses, Mardil e Darion ────
       // Nomes exatos para não pegar servos como "Beleth's Seer Sephia" ou "Orfen's Handmaiden"
       const EPIC_NAMES = [
-        "core", "baium", "queen ant", "orfen", "antharas", "valakas", "beleth", "andreas van halter"
+        "core", "baium", "queen ant", "orfen", "antharas", "valakas", "beleth",
+        "andreas van halter", "fafurion"
       ];
       const nameLower = bossName.toLowerCase();
       const isEpic = EPIC_NAMES.some((epic) => nameLower === epic);
       const isMardil = nameLower.includes("mardil");
       const isDarion = nameLower === "darion";
       if (!isEpic && !isMardil && !isDarion) return;
+
+      monitoredCount++;
 
       // ── CAMINHO 1: Boss ficou ALIVE agora ──────
       if (bossStatus.includes("ALIVE")) {
@@ -288,8 +304,13 @@ async function checkBosses() {
     });
   }); // fim $("table").each
 
+  // Se zerar, o layout do site provavelmente mudou de novo
+  if (monitoredCount === 0) {
+    console.warn("[⚠️] No monitored bosses found on the page — the site layout may have changed again!");
+  }
+
   if (isFirstRun) {
-    console.log("✅ First scan complete. Hybrid monitoring system online!");
+    console.log(`✅ First scan complete (${monitoredCount} bosses monitored). Hybrid monitoring system online!`);
     isFirstRun = false;
   }
 }
